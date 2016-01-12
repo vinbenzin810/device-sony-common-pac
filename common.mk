@@ -59,6 +59,10 @@ PRODUCT_COPY_FILES += \
     device/sony/common/rootdir/system/etc/sensors/sensors_settings:system/etc/sensors/sensors_settings
 
 
+# Variant linking script
+PRODUCT_COPY_FILES += \
+    $(LOCAL_PATH)/releasetools/firmware.sh:install/bin/firmware.sh
+
 # Audio
 PRODUCT_PACKAGES += \
     audio.a2dp.default \

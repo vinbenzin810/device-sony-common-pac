@@ -28,6 +28,9 @@ BOARD_KERNEL_CMDLINE += coherent_pool=8M
 TARGET_USERIMAGES_USE_EXT4 := true
 BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE := ext4
 
+# Releasetools
+TARGET_RELEASETOOLS_EXTENSIONS := device/sony/common/releasetools
+
 # GFX
 USE_OPENGL_RENDERER := true
 TARGET_USES_ION := true
