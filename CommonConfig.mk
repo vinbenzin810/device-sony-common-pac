@@ -29,8 +29,14 @@ TARGET_USERIMAGES_USE_EXT4 := true
 BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE := ext4
 
 # init
+TARGET_UNIFIED_DEVICE := true
 TARGET_INIT_VENDOR_LIB := libinit_msm
 TARGET_LIBINIT_DEFINES_FILE := device/sony/common/libinit/init_sony.cpp
+
+# Exclude these from build.prop, they are set by libinit
+PRODUCT_SYSTEM_PROPERTY_BLACKLIST := \
+    ro.product.model \
+    ro.product.device
 
 # Releasetools
 TARGET_RELEASETOOLS_EXTENSIONS := device/sony/common/releasetools
