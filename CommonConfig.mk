@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-PRODUCT_VENDOR_KERNEL_HEADERS := device/sony/common/kernel-headers
-
 TARGET_NO_RADIOIMAGE := true
 TARGET_NO_BOOTLOADER := true
 TARGET_NO_RECOVERY := false
 TARGET_NO_KERNEL := false
+
+TARGET_KERNEL_SOURCE := kernel/sony/msm
 
 # common cmdline parameters
 BOARD_KERNEL_CMDLINE += user_debug=31 androidboot.selinux=permissive
@@ -78,9 +78,6 @@ ifeq ($(HOST_OS),linux)
     endif
   endif
 endif
-
-BUILD_KERNEL := true
--include device/sony/common-kernel/KernelConfig.mk
 
 # Include build helpers for QCOM proprietary
 -include vendor/qcom/proprietary/common/build/proprietary-build.mk
