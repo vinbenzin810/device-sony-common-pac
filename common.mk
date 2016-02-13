@@ -145,6 +145,11 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     libemoji
 
+# Recovery
+PRODUCT_PACKAGES += \
+    init_sony \
+    toybox_static
+
 # Limit dex2oat threads to improve thermals
 PRODUCT_PROPERTY_OVERRIDES += \
     dalvik.vm.dex2oat-threads=2 \
