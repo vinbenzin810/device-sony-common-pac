@@ -187,6 +187,9 @@ on boot
     chown system graphics /sys/class/graphics/fb2/ad
     chmod 0664 /sys/class/graphics/fb2/ad
 
+    # MDSS PCC RGB colour adjust interface
+    chown system system /sys/devices/virtual/graphics/fb0/rgb
+
     # For bridgemgr daemon to inform the USB driver of the correct transport
     chown radio radio /sys/class/android_usb/f_rmnet_smd_sdio/transport
 
