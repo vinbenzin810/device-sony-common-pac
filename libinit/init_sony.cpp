@@ -39,6 +39,14 @@
 
 #include "variants.h"
 
+#ifndef VARIANT_GSM
+#define VARIANT_GSM 1
+#endif
+
+#ifndef VARIANT_TABLET
+#define VARIANT_TABLET 0
+#endif
+
 void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *board_type)
 {
     UNUSED(msm_id);
@@ -47,27 +55,44 @@ void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *boar
 
     char model[PROP_VALUE_MAX];
     char codename[PROP_VALUE_MAX];
+
+#if VARIANT_GSM
     int variantID = -1;
     int m_number = 0;
+#endif
 
     property_get("ro.fxp.variant", model);
     property_get("ro.cm.device", codename);
 
-    // make family letter uppercase if needed
+    // make family letters uppercase if needed
     if(model[0] > 90)
         model[0] -= 32;
+#if VARIANT_TABLET
+    if(model[1] > 90)
+        model[1] -= 32;
+    if(model[2] > 90)
+        model[2] -= 32;
+#endif
 
+#if VARIANT_GSM
+#if VARIANT_TABLET
+    // strip first three characters
+    sscanf(&model[3], "%d", &m_number);
+#else
     // strip first character
     sscanf(&model[1], "%d", &m_number);
+#endif
 
     for (int i = 0; i < (signed)(sizeof(variants)/(sizeof(variants[0]))); i++) {
         if (m_number == variants[i][0])
             variantID = i;
     }
+#endif
 
     property_set("ro.product.model", model);
     property_set("ro.product.device", codename);
 
+#if VARIANT_GSM
     if (variantID >= 0) {
         if (variants[variantID][1]) { // DS
             property_set("persist.radio.multisim.config", "dsds");
@@ -79,4 +104,5 @@ void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *boar
             property_set("ro.telephony.default_network", "0");
         }
     }
+#endif
 }
