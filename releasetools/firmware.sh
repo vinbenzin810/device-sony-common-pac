@@ -14,7 +14,10 @@ umount /lta-label
 touch /system/vendor/build.prop
 echo ro.fxp.variant=$variant >> /system/vendor/build.prop
 
-if [ ! -e /dev/block/bootdevice/by-name/modem ] && [ -d /system/blobs/ ]; then
+if [ ! -e /dev/block/bootdevice/by-name/modem ] && [ -d /system/blobs/$variant/ ]; then
+    # Remove default modem symlinks
+    rm -rf /system/etc/firmware/mba*
+    rm -rf /system/etc/firmware/modem*
     # Symlink the correct modem blobs
     basedir="/system/blobs/$variant/"
     cd $basedir
