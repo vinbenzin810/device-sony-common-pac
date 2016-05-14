@@ -43,10 +43,6 @@
 #define VARIANT_GSM 1
 #endif
 
-#ifndef VARIANT_TABLET
-#define VARIANT_TABLET 0
-#endif
-
 void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *board_type)
 {
     UNUSED(msm_id);
@@ -65,34 +61,25 @@ void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *boar
     property_get("ro.cm.device", codename);
 
     // make family letters uppercase if needed
-    if(model[0] > 90)
-        model[0] -= 32;
-#if VARIANT_TABLET
-    if(model[1] > 90)
-        model[1] -= 32;
-    if(model[2] > 90)
-        model[2] -= 32;
-#endif
-
+    // strip letters from model number
+	for (int i = 0; i < 3; i++) {
+		if(model[i] > 96 && model[i] < 123) {
+			model[i] -= 32;
 #if VARIANT_GSM
-#if VARIANT_TABLET
-    // strip first three characters
-    sscanf(&model[3], "%d", &m_number);
-#else
-    // strip first character
-    sscanf(&model[1], "%d", &m_number);
+			sscanf(&model[i+1], "%d", &m_number);
 #endif
-
-    for (int i = 0; i < (signed)(sizeof(variants)/(sizeof(variants[0]))); i++) {
-        if (m_number == variants[i][0])
-            variantID = i;
-    }
-#endif
+		}
+	}
 
     property_set("ro.product.model", model);
     property_set("ro.product.device", codename);
 
 #if VARIANT_GSM
+    for (int i = 0; i < (signed)(sizeof(variants)/(sizeof(variants[0]))); i++) {
+        if (m_number == variants[i][0])
+            variantID = i;
+    }
+
     if (variantID >= 0) {
         if (variants[variantID][1]) { // DS
             property_set("persist.radio.multisim.config", "dsds");
