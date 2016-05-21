@@ -13,6 +13,7 @@
 # limitations under the License.
 
 BOARD_USES_QCOM_HARDWARE := true
+PRODUCT_VENDOR_KERNEL_HEADERS := device/sony/common/kernel-headers
 
 TARGET_NO_RADIOIMAGE := true
 TARGET_NO_BOOTLOADER := true
