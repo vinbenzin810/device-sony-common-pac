@@ -14,6 +14,7 @@
 
 DEVICE_PACKAGE_OVERLAYS += device/sony/common/overlay
 
+# Common Specific Permissions
 PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.hardware.audio.low_latency.xml:system/etc/permissions/android.hardware.audio.low_latency.xml \
     frameworks/native/data/etc/android.hardware.camera.flash-autofocus.xml:system/etc/permissions/android.hardware.camera.flash-autofocus.xml \
@@ -56,6 +57,11 @@ PRODUCT_COPY_FILES += \
     device/sony/common/rootdir/system/etc/sec_config:system/etc/sec_config \
     device/sony/common/rootdir/system/etc/sensors/sensors_settings:system/etc/sensors/sensors_settings
 
+# QMI
+PRODUCT_COPY_FILES += \
+    device/sony/common/rootdir/system/etc/data/dsi_config.xml:system/etc/data/dsi_config.xml \
+    device/sony/common/rootdir/system/etc/data/netmgr_config.xml:system/etc/data/netmgr_config.xml \
+    device/sony/common/rootdir/system/etc/data/qmi_config.xml:system/etc/data/qmi_config.xml
 
 # Variant linking script
 PRODUCT_COPY_FILES += \
@@ -207,12 +213,15 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PROPERTY_OVERRIDES += \
     vidc.debug.level=1
 
+# Audio
 # Fluencetype can be "fluence" or "fluencepro" or "none"
 PRODUCT_PROPERTY_OVERRIDES += \
     persist.audio.fluence.voicecall=true \
+    persist.audio.fluence.voicecomm=true \
     persist.audio.fluence.voicerec=false \
     persist.audio.fluence.speaker=true \
-    media.aac_51_output_enabled=true
+    media.aac_51_output_enabled=true \
+    audio.deep_buffer.media=1
 
 # Property to enable user to access Google WFD settings.
 PRODUCT_PROPERTY_OVERRIDES += \

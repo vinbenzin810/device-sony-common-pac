@@ -1,5 +1,4 @@
 /*
- * Copyright (C) 2015 The CyanogenMod Project
  * Copyright (C) 2016 Adam Farden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,23 +16,40 @@
 
 #include <errno.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 
 #define LOG_TAG "Simple PowerHAL"
+#include <cutils/properties.h>
 #include <utils/Log.h>
 
 #include <hardware/hardware.h>
 #include <hardware/power.h>
 
-#include "power.h"
+#define RQBALANCE_BALANCE_LEVEL "/sys/devices/system/cpu/cpuquiet/rqbalance/balance_level"
+#define RQBALANCE_UP_THRESHOLD "/sys/devices/system/cpu/cpuquiet/rqbalance/nr_run_thresholds"
+#define RQBALANCE_DOWN_THRESHOLD "/sys/devices/system/cpu/cpuquiet/rqbalance/nr_down_run_thresholds"
 
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-static int boostpulse_fd = -1;
+#define LOW_POWER_BALANCE_LEVEL "rqbalance.low.balance_level"
+#define LOW_POWER_UP_THRESHOLD "rqbalance.low.up_threshold"
+#define LOW_POWER_DOWN_THRESHOLD "rqbalance.low.down_threshold"
 
-static int current_power_profile = -1;
-static int requested_power_profile = -1;
+#define NORMAL_POWER_BALANCE_LEVEL "rqbalance.normal.balance_level"
+#define NORMAL_POWER_UP_THRESHOLD "rqbalance.normal.up_threshold"
+#define NORMAL_POWER_DOWN_THRESHOLD "rqbalance.normal.down_threshold"
 
-static int sysfs_write_str(char *path, char *s)
+#define PROPERTY_VALUE_MAX 128
+
+char low_balance[PROPERTY_VALUE_MAX];
+char low_up[PROPERTY_VALUE_MAX];
+char low_down[PROPERTY_VALUE_MAX];
+
+char normal_balance[PROPERTY_VALUE_MAX];
+char normal_up[PROPERTY_VALUE_MAX];
+char normal_down[PROPERTY_VALUE_MAX];
+
+int sysfs_write(char *path, char *s)
 {
     char buf[80];
     int len;
@@ -59,106 +75,61 @@ static int sysfs_write_str(char *path, char *s)
     return ret;
 }
 
-static int sysfs_write_int(char *path, int value)
+void set_low_power()
 {
-    char buf[80];
-    snprintf(buf, 80, "%d", value);
-    return sysfs_write_str(path, buf);
+    ALOGI("Setting low power mode");
+    sysfs_write(RQBALANCE_BALANCE_LEVEL, low_balance);
+    sysfs_write(RQBALANCE_UP_THRESHOLD, low_up);
+    sysfs_write(RQBALANCE_DOWN_THRESHOLD, low_down);
 }
 
-static int is_profile_valid(int profile)
+void set_normal_power()
 {
-    return profile >= 0 && profile < PROFILE_MAX;
+    ALOGI("Setting normal power mode");
+    sysfs_write(RQBALANCE_BALANCE_LEVEL, normal_balance);
+    sysfs_write(RQBALANCE_UP_THRESHOLD, normal_up);
+    sysfs_write(RQBALANCE_DOWN_THRESHOLD, normal_down);
 }
 
-static void power_init(__attribute__((unused)) struct power_module *module)
+static void power_init(struct power_module *module)
 {
     ALOGI("Simple PowerHAL is alive!.");
+
+    property_get(LOW_POWER_BALANCE_LEVEL, low_balance, "0");
+    ALOGI("LOW_POWER_BALANCE_LEVEL: %s", low_balance);
+    property_get(LOW_POWER_UP_THRESHOLD, low_up, "0");
+    ALOGI("LOW_POWER_UP_THRESHOLD: %s", low_up);
+    property_get(LOW_POWER_DOWN_THRESHOLD, low_down, "0");
+    ALOGI("LOW_POWER_DOWN_THRESHOLD: %s", low_down);
+
+    property_get(NORMAL_POWER_BALANCE_LEVEL, normal_balance, "0");
+    ALOGI("NORMAL_POWER_BALANCE_LEVEL: %s", normal_balance);
+    property_get(NORMAL_POWER_UP_THRESHOLD, normal_up, "0");
+    ALOGI("NORMAL_POWER_UP_THRESHOLD: %s", normal_up);
+    property_get(NORMAL_POWER_DOWN_THRESHOLD, normal_down, "0");
+    ALOGI("NORMAL_POWER_DOWN_THRESHOLD: %s", normal_down);
+
+    set_normal_power();
 }
 
-static int boostpulse_open()
+static void power_hint(struct power_module *module, power_hint_t hint,
+                            void *data)
 {
-    pthread_mutex_lock(&lock);
-    if (boostpulse_fd < 0) {
-        boostpulse_fd = open(INTERACTIVE_PATH "boostpulse", O_WRONLY);
-    }
-    pthread_mutex_unlock(&lock);
-
-    return boostpulse_fd;
-}
-
-static void set_power_profile(int profile)
-{
-    if (!is_profile_valid(profile)) {
-        ALOGE("%s: unknown profile: %d", __func__, profile);
-        return;
-    }
-
-    if (profile == current_power_profile)
-        return;
-
-    ALOGD("%s: setting profile %d", __func__, profile);
-
-    sysfs_write_int(INTERACTIVE_PATH "boost",
-                    profiles[profile].boost);
-    sysfs_write_int(INTERACTIVE_PATH "boostpulse_duration",
-                    profiles[profile].boostpulse_duration);
-    sysfs_write_int(INTERACTIVE_PATH "go_hispeed_load",
-                    profiles[profile].go_hispeed_load);
-    sysfs_write_int(INTERACTIVE_PATH "hispeed_freq",
-                    profiles[profile].hispeed_freq);
-    sysfs_write_int(INTERACTIVE_PATH "io_is_busy",
-                    profiles[profile].io_is_busy);
-    sysfs_write_int(INTERACTIVE_PATH "min_sample_time",
-                    profiles[profile].min_sample_time);
-    sysfs_write_str(INTERACTIVE_PATH "target_loads",
-                    profiles[profile].target_loads);
-    sysfs_write_int(CPUFREQ_PATH "scaling_max_freq",
-                    profiles[profile].scaling_max_freq);
-
-    current_power_profile = profile;
-}
-
-static void power_hint(__attribute__((unused)) struct power_module *module,
-                       power_hint_t hint, void *data)
-{
-    char buf[80];
-    int len;
-
     switch (hint) {
+        case POWER_HINT_VSYNC:
+            break;
 
         case POWER_HINT_INTERACTION:
-            if (!is_profile_valid(current_power_profile)) {
-                ALOGD("%s: no power profile selected yet", __func__);
-                return;
-            }
-
-            if (!profiles[current_power_profile].boostpulse_duration)
-                return;
-
-            if (boostpulse_open() >= 0) {
-                snprintf(buf, sizeof(buf), "%d", 1);
-                len = write(boostpulse_fd, &buf, sizeof(buf));
-                if (len < 0) {
-                    strerror_r(errno, buf, sizeof(buf));
-                    ALOGE("Error writing to boostpulse: %s\n", buf);
-
-                    pthread_mutex_lock(&lock);
-                    close(boostpulse_fd);
-                    boostpulse_fd = -1;
-                    pthread_mutex_unlock(&lock);
-                }
-            }
+            // When touching the screen, pressing buttons etc.
             break;
 
         case POWER_HINT_LOW_POWER:
-            /* This hint is handled by the framework */
-            break;
-
-        case POWER_HINT_SET_PROFILE:
-            pthread_mutex_lock(&lock);
-            set_power_profile(*(int32_t *)data);
-            pthread_mutex_unlock(&lock);
+            // When we want to save battery.
+            if (data) {
+                set_low_power();
+            } else {
+                set_normal_power();
+            }
             break;
 
         default:
@@ -166,38 +137,26 @@ static void power_hint(__attribute__((unused)) struct power_module *module,
     }
 }
 
-static void set_interactive(__attribute__((unused)) struct power_module *module,
-                            int on)
+static void set_interactive(struct power_module *module, int on)
 {
-    if (!is_profile_valid(current_power_profile)) {
-        ALOGD("%s: no power profile selected yet", __func__);
-        return;
-    }
+    // set interactive means change governor, cpufreqs etc
+    // for when device is awake and ready to be used.
 
-    if (on) {
-        sysfs_write_int(INTERACTIVE_PATH "hispeed_freq",
-                        profiles[current_power_profile].hispeed_freq);
-        sysfs_write_int(INTERACTIVE_PATH "go_hispeed_load",
-                        profiles[current_power_profile].go_hispeed_load);
-        sysfs_write_str(INTERACTIVE_PATH "target_loads",
-                        profiles[current_power_profile].target_loads);
+    if (!on) {
+        ALOGI("Device is asleep.");
+        set_low_power();
     } else {
-        sysfs_write_int(INTERACTIVE_PATH "hispeed_freq",
-                        profiles[current_power_profile].hispeed_freq_off);
-        sysfs_write_int(INTERACTIVE_PATH "go_hispeed_load",
-                        profiles[current_power_profile].go_hispeed_load_off);
-        sysfs_write_str(INTERACTIVE_PATH "target_loads",
-                        profiles[current_power_profile].target_loads_off);
+        ALOGI("Device is awake.");
+        set_normal_power();
     }
 }
 
-void set_feature(__attribute__((unused)) struct power_module *module,
-                 feature_t feature, int state)
+void set_feature(struct power_module *module, feature_t feature, int state)
 {
 #ifdef TAP_TO_WAKE_NODE
     if (feature == POWER_FEATURE_DOUBLE_TAP_TO_WAKE) {
             ALOGI("Double tap to wake is %s.", state ? "enabled" : "disabled");
-            sysfs_write_str(TAP_TO_WAKE_NODE, state ? "1" : "0");
+            sysfs_write(TAP_TO_WAKE_NODE, state ? "1" : "0");
         return;
     }
 #endif
@@ -206,15 +165,6 @@ void set_feature(__attribute__((unused)) struct power_module *module,
 static struct hw_module_methods_t power_module_methods = {
     .open = NULL,
 };
-
-static int get_feature(__attribute__((unused)) struct power_module *module,
-                       feature_t feature)
-{
-    if (feature == POWER_FEATURE_SUPPORTED_PROFILES) {
-        return PROFILE_MAX;
-    }
-    return -1;
-}
 
 struct power_module HAL_MODULE_INFO_SYM = {
     .common = {
@@ -231,5 +181,4 @@ struct power_module HAL_MODULE_INFO_SYM = {
     .powerHint = power_hint,
     .setInteractive = set_interactive,
     .setFeature = set_feature,
-    .getFeature = get_feature,
 };

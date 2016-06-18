@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 BOARD_USES_QCOM_HARDWARE := true
 PRODUCT_VENDOR_KERNEL_HEADERS := device/sony/common/kernel-headers
 
@@ -75,6 +76,8 @@ TARGET_PROVIDES_LIBLIGHT := true
 # Charger
 BOARD_CHARGER_ENABLE_SUSPEND := true
 
+TARGET_SYSTEM_PROP := device/sony/common/system.prop
+
 # Include an expanded selection of fonts
 EXTENDED_FONT_FOOTPRINT := true
 
@@ -92,10 +95,13 @@ ifeq ($(HOST_OS),linux)
   endif
 endif
 
+
+BUILD_KERNEL := true
+include device/sony/common-headers/KernelHeaders.mk
+-include device/sony/common-kernel/KernelConfig.mk
+
 # Include build helpers for QCOM proprietary
 -include vendor/qcom/proprietary/common/build/proprietary-build.mk
 
 # SELinux
-include device/qcom/sepolicy/sepolicy.mk
-
-BOARD_SEPOLICY_DIRS += device/sony/common/sepolicy
+include device/sony/sepolicy/sepolicy.mk
